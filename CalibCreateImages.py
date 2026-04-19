@@ -19,7 +19,7 @@ while True:
     if k == 27:
         break
     elif k == ord('s'): # wait for 's' key to save and exit
-        cv2.imwrite("img" + str(num) + '.png', frame)
+        cv2.imwrite("CalibImg" + str(num) + '.png', frame)
         print("image saved!")
         num += 1
 
