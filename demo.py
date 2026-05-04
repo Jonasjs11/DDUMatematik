@@ -1,21 +1,15 @@
-import argparse
 import os
 import sys
 import numpy as np
 import time
 
 import cv2
-import torch
 from PIL import Image
 
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
-
 executor = ThreadPoolExecutor(max_workers=1)
 
 sys.path.insert(0, os.path.join(os.getcwd(), ".."))
-from unimernet.common.config import Config
-import unimernet.tasks as tasks
-from unimernet.processors import load_processor
 
 import ImageProcessorClass
 import HelperFunc
@@ -99,7 +93,7 @@ if __name__ == "__main__":
 
         contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        cropped = find_sorrounding_contour_and_crop(frame, contours)
+        cropped = HelperFunc.find_sorrounding_contour_and_crop(frame, contours)
 
         resized_image = cv2.resize(cropped, (int(cropped.shape[1]*0.25), int(cropped.shape[0]*0.25)), interpolation=cv2.INTER_LINEAR)
 
