@@ -9,6 +9,7 @@ import time
 import HelperFunc
 import StartCalib
 import HMER
+import OpenCVPlot
 
 
 # Start kamera
