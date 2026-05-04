@@ -6,8 +6,9 @@ import cv2
 import time
 
 # Egne filer
-import demo
+import HelperFunc
 import StartCalib
+import HMER
 
 
 # Start kamera
@@ -27,25 +28,6 @@ calibration_succes_grid_animation_t = 0
 calibration_succes_grid_animation_speed = 5
 
 run_main_program = False
-
-def get_marker_box(corners, ids, target_id):
-    for i, marker_id in enumerate(ids.flatten()):
-        if marker_id == target_id:
-            pts = corners[i][0].astype(int)
-            return cv2.boundingRect(pts)
-
-    print("Unable to find marker box " + str(target_id))
-    return None
-
-def contour_contains_marker(contour, marker_box):
-    if marker_box is None:
-        return False
-
-    x, y, w, h = cv2.boundingRect(contour)
-    mx, my, mw, mh = marker_box
-
-    return (mx >= x             and my >= y and
-            mx + mw <= x + w    and my + mh <= y + h)
 
 if __name__ == "__main__":
     StartCalib.setup_windows()
@@ -99,8 +81,8 @@ if __name__ == "__main__":
             gray = cv2.cvtColor(warped_rotated, cv2.COLOR_BGR2GRAY)
             clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8,8))
             gray = clahe.apply(gray)
-            gray = cv2.GaussianBlur(gray, (3,3), 0)
-            thresh = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 41, 5)
+            gray = cv2.GaussianBlur(src=gray, ksize=(3,3), sigmaX=0, sigmaY=0)
+            thresh = cv2.adaptiveThreshold(src=gray, maxValue=255, adaptiveMethod=cv2.ADAPTIVE_THRESH_GAUSSIAN_C, thresholdType=cv2.THRESH_BINARY_INV, blockSize=41, C=5) # Blocksize er område for threshold (kun ulige tal), C er en konstant som trækkes fra gennemsnittet
 
             # remove tiny noise but keep strokes
             kernel = np.ones((2,2), np.uint8)
@@ -111,8 +93,8 @@ if __name__ == "__main__":
             thresh = cv2.dilate(thresh, kernel, iterations=1)
 
             contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            filtered_contours = demo.filter_contours_by_size(contours, minimum_area=75, minimum_wh=5)
-            cropped = demo.find_grouped_contours_and_crop(warped_rotated, filtered_contours, horizontal_thresh=100, vertical_thresh=20, pad=20)
+            filtered_contours = HelperFunc.filter_contours_by_size(contours, minimum_area=75, minimum_wh=5)
+            cropped = HelperFunc.find_grouped_contours_and_crop(warped_rotated, filtered_contours, horizontal_thresh=100, vertical_thresh=20, pad=20)
 
             gray = cv2.cvtColor(warped_rotated, cv2.COLOR_BGR2GRAY)
             clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8,8))
@@ -121,19 +103,19 @@ if __name__ == "__main__":
 
             if ids is not None:
                 cv2.aruco.drawDetectedMarkers(warped_rotated, corners, ids)
-                
+
                 if 6 in ids.flatten(): # flatten() laver en liste med elementer, i stedet for et array med lister med størrelser 1
-                    marker_box = get_marker_box(corners, ids, 6)
+                    marker_box = HelperFunc.get_marker_box(corners, ids, 6)
                     for contour in filtered_contours:
-                        if contour_contains_marker(contour, marker_box):
+                        if HelperFunc.contour_contains_marker(contour, marker_box):
                             x, y, w, h = cv2.boundingRect(contour)
                             crop = warped_rotated[y:y+h, x:x+w]
                             cv2.imshow("matched_contour 6", crop)
 
                 if 7 in ids.flatten(): # flatten() laver en liste med elementer, i stedet for et array med lister med størrelser 1
-                    marker_box = get_marker_box(corners, ids, 7)
+                    marker_box = HelperFunc.get_marker_box(corners, ids, 7)
                     for contour in filtered_contours:
-                        if contour_contains_marker(contour, marker_box):
+                        if HelperFunc.contour_contains_marker(contour, marker_box):
                             x, y, w, h = cv2.boundingRect(contour)
                             crop = warped_rotated[y:y+h, x:x+w]
                             cv2.imshow("matched_contour 7", crop)

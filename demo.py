@@ -17,65 +17,8 @@ from unimernet.common.config import Config
 import unimernet.tasks as tasks
 from unimernet.processors import load_processor
 
-class ImageProcessor:
-    def __init__(self, cfg_path):
-        self.cfg_path = cfg_path
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.model, self.vis_processor = self.load_model_and_processor()
-
-    def load_model_and_processor(self):
-        args = argparse.Namespace(cfg_path=self.cfg_path, options=None)
-        cfg = Config(args)
-        task = tasks.setup_task(cfg)
-        model = task.build_model(cfg).to(self.device).half()#Half means half precision
-        model.eval()#Added by ChatGPT
-        vis_processor = load_processor('formula_image_eval', cfg.config.datasets.formula_rec_eval.vis_processor.eval)
-
-        return model, vis_processor
-
-    def process_single_image(self, image_path):
-        try:
-            raw_image = Image.open(image_path)
-        except IOError:
-            print(f"Error: Unable to open image at {image_path}")
-            return
-        # Convert PIL Image to OpenCV format
-        open_cv_image = np.array(raw_image)
-        # Convert RGB to BGR
-        if len(open_cv_image.shape) == 3:
-            # Convert RGB to BGR
-            open_cv_image = open_cv_image[:, :, ::-1].copy()
-        # Display the image using cv2
-
-        image = self.vis_processor(raw_image).unsqueeze(0).to(self.device).half()#Half means half precision
-        with torch.inference_mode():
-            output = self.model.generate(
-                {"image": image},
-                do_sample=False,
-                temperature=None,
-                top_p=None
-            )
-        pred = output["pred_str"][0]
-        #print(f'Prediction:\n{pred}')
-
-        #cv2.imshow('Original Image', open_cv_image)
-        #cv2.waitKey(0)
-        #cv2.destroyAllWindows()
-
-        return pred
-    
-    def process_image(self, inputImage):
-        image = self.vis_processor(inputImage).unsqueeze(0).to(self.device).half()#Half means half precision
-        with torch.inference_mode():
-            output = self.model.generate(
-                {"image": image},
-                do_sample=False,
-                temperature=None,
-                top_p=None
-            )
-        pred = output["pred_str"][0]
-
-        return pred
+import ImageProcessorClass
+import HelperFunc
 
 def millis(startTime):
     return (time.time() - startTime)*1000
@@ -92,7 +35,7 @@ def setup_camera_and_processor():
 
     root_path = os.path.abspath(os.getcwd())
     config_path = os.path.join(root_path, "UniMERNet/configs/demo.yaml")
-    processor = ImageProcessor(config_path)
+    processor = ImageProcessorClass.ImageProcessor(config_path)
 
 def get_latex_from_image():
     ret, frame = cap.read()
@@ -115,7 +58,7 @@ def get_latex_from_image():
 
     contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    cropped = find_sorrounding_contour_and_crop(frame, contours)
+    cropped = HelperFunc.find_sorrounding_contour_and_crop(frame, contours)
 
     resized_image = cv2.resize(cropped, (int(cropped.shape[1]*0.25), int(cropped.shape[0]*0.25)), interpolation=cv2.INTER_LINEAR)
 
@@ -124,144 +67,6 @@ def get_latex_from_image():
 
     return processor.process_image(pil_image), frame_rgb, cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     
-def find_sorrounding_contour_and_crop(frame, contours):
-    xs = []
-    ys = []
-
-    for c in contours:
-        x, y, w, h = cv2.boundingRect(c)
-        xs.append(x)
-        xs.append(x+w)
-        ys.append(y)
-        ys.append(y+h)
-        cv2.rectangle(frame, (x,y), (x+w,y+h), (255,0,0), 2)
-        #cv2.rectangle(thresh, (x,y), (x+w,y+h), (255,0,0), 2)
-
-    if contours:
-        x1 = min(xs)
-        x2 = max(xs)
-        y1 = min(ys)
-        y2 = max(ys)
-
-        pad = 20
-        x1 = max(x1 - pad, 0)
-        y1 = max(y1 - pad, 0)
-        x2 = min(x2 + pad, frame.shape[1])
-        y2 = min(y2 + pad, frame.shape[0])
-
-        cropped = frame[y1:y2, x1:x2]
-        cv2.rectangle(frame, (x1,y1), (x2,y2), (0,255,0), 2)
-        #cv2.rectangle(thresh, (x1,y1), (x2,y2), (0,255,0), 2)
-    else:
-        cropped = frame
-
-    return cropped
-
-def find_grouped_contours_and_crop(
-    frame,
-    contours,
-    horizontal_thresh=40,
-    vertical_thresh=80,
-    pad=20
-):
-    boxes = []
-
-    # Get bounding boxes
-    for c in contours:
-        x, y, w, h = cv2.boundingRect(c)
-        boxes.append([x, y, x + w, y + h])
-
-    merged = True
-    while merged:
-        merged = False
-        new_boxes = []
-
-        while boxes:
-            box = boxes.pop(0)
-            x1, y1, x2, y2 = box
-
-            merged_box = box
-
-            i = 0
-            while i < len(boxes):
-                bx1, by1, bx2, by2 = boxes[i]
-
-                # compute gap between boxes
-                horizontal_gap = min(abs(bx1 - x2), abs(x1 - bx2))
-                vertical_gap = min(abs(by1 - y2), abs(y1 - by2))
-
-                # merge if close enough
-                dx, dy = rect_distance(merged_box, boxes[i])
-
-                if dx < horizontal_thresh and dy < vertical_thresh:
-                    merged_box = [
-                        min(x1, bx1),
-                        min(y1, by1),
-                        max(x2, bx2),
-                        max(y2, by2),
-                    ]
-
-                    boxes.pop(i)
-                    merged = True
-                    x1, y1, x2, y2 = merged_box
-                else:
-                    i += 1
-
-            new_boxes.append(merged_box)
-
-        boxes = new_boxes
-
-    crops = []
-
-    for (x1, y1, x2, y2) in boxes:
-        x1 = max(x1 - pad, 0)
-        y1 = max(y1 - pad, 0)
-        x2 = min(x2 + pad, frame.shape[1])
-        y2 = min(y2 + pad, frame.shape[0])
-
-        crop = frame[y1:y2, x1:x2]
-        crops.append(crop)
-
-        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-
-    return crops
-
-def filter_contours_by_size(contours, minimum_area=75, minimum_wh=5):
-    filtered_contours = []
-    for cnt in contours:
-        x, y, w, h = cv2.boundingRect(cnt)
-        area = cv2.contourArea(cnt)
-
-        # --- HARD FILTERS ---
-        if area < minimum_area:          # remove tiny noise (tune: 30–200)
-            continue
-        if w < minimum_wh or h < minimum_wh:     # remove tiny boxes
-            continue
-
-        filtered_contours.append(cnt)
-    return filtered_contours
-
-def rect_distance(boxA, boxB):
-    ax1, ay1, ax2, ay2 = boxA
-    bx1, by1, bx2, by2 = boxB
-
-    # horizontal gap
-    if ax2 < bx1:
-        dx = bx1 - ax2
-    elif bx2 < ax1:
-        dx = ax1 - bx2
-    else:
-        dx = 0  # overlap
-
-    # vertical gap
-    if ay2 < by1:
-        dy = by1 - ay2
-    elif by2 < ay1:
-        dy = ay1 - by2
-    else:
-        dy = 0  # overlap
-
-    return dx, dy
     
 def release_camera():
     cap.release()
