@@ -31,6 +31,7 @@ run_main_program = False
 
 if __name__ == "__main__":
     StartCalib.setup_windows()
+    #HMER.setup_processor()
     
     while True:
         key = cv2.waitKey(1) & 0xFF
@@ -111,6 +112,7 @@ if __name__ == "__main__":
                             x, y, w, h = cv2.boundingRect(contour)
                             crop = warped_rotated[y:y+h, x:x+w]
                             cv2.imshow("matched_contour 6", crop)
+                            #print(HMER.doHMER(crop))
 
                 if 7 in ids.flatten(): # flatten() laver en liste med elementer, i stedet for et array med lister med størrelser 1
                     marker_box = HelperFunc.get_marker_box(corners, ids, 7)
@@ -119,6 +121,7 @@ if __name__ == "__main__":
                             x, y, w, h = cv2.boundingRect(contour)
                             crop = warped_rotated[y:y+h, x:x+w]
                             cv2.imshow("matched_contour 7", crop)
+                            #print(HMER.doHMER(crop))
 
 
 

@@ -33,13 +33,7 @@ def find_sorrounding_contour_and_crop(frame, contours):
 
     return cropped
 
-def find_grouped_contours_and_crop(
-    frame,
-    contours,
-    horizontal_thresh=40,
-    vertical_thresh=80,
-    pad=20
-):
+def find_grouped_contours_and_crop(frame, contours, horizontal_thresh=40, vertical_thresh=80, pad=20):
     boxes = []
 
     # Get bounding boxes
