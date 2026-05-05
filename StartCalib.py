@@ -20,6 +20,15 @@ def board2proj(camproj_H, camboard_H, point): # https://chatgpt.com/share/69f607
 
     return projected_pt[0][0]
 
+def get_board2proj_H(camproj_H, camboard_H):
+    # Invert camboard homography (board <- camera → camera <- board)
+    camboard_inv = np.linalg.inv(camboard_H)
+
+    # Compose transformations: board -> camera -> projector
+    H = camproj_H @ camboard_inv
+
+    return H
+
 def debug_board_grid(camproj_H, camboard_H, image, animation_t):
     amount_of_lines = 20
     for i in range(amount_of_lines+1):
@@ -63,15 +72,18 @@ def try_generate_homographies(all_camproj_cam_points, all_camproj_proj_points, a
         all_camboard_cam_points = np.array(all_camboard_cam_points, dtype=np.float32)
         all_camboard_board_points = np.array(all_camboard_board_points, dtype=np.float32) #Laver til numpy matrix med form (N, 2)
 
-        measured_whiteboard_height = int((dist(all_camboard_board_points[0], all_camboard_board_points[1])+
-                                          dist(all_camboard_board_points[2], all_camboard_board_points[3])) / 2)
-        measured_whiteboard_width  = int((dist(all_camboard_board_points[1], all_camboard_board_points[2])+
-                                          dist(all_camboard_board_points[3], all_camboard_board_points[0])) / 2)
+        measured_whiteboard_height = int((dist(all_camboard_cam_points[0], all_camboard_cam_points[1])+
+                                          dist(all_camboard_cam_points[2], all_camboard_cam_points[3])) / 2)
+        measured_whiteboard_width  = int((dist(all_camboard_cam_points[1], all_camboard_cam_points[2])+
+                                          dist(all_camboard_cam_points[3], all_camboard_cam_points[0])) / 2)
+        #print(str(dist(all_camboard_cam_points[0], all_camboard_cam_points[1])) + " " + str(dist(all_camboard_cam_points[2], all_camboard_cam_points[3])) + " " + str(dist(all_camboard_cam_points[1], all_camboard_cam_points[2])) + " " + str(dist(all_camboard_cam_points[3], all_camboard_cam_points[0])))
+        #print(str(measured_whiteboard_height) + " " + str(measured_whiteboard_width))
+
         dst_pts = np.array([
             [0, 0],
-            [measured_whiteboard_width, 0],
-            [measured_whiteboard_width, measured_whiteboard_height],
-            [0, measured_whiteboard_height]
+            [measured_whiteboard_height, 0],
+            [measured_whiteboard_height, measured_whiteboard_width],
+            [0, measured_whiteboard_width]
         ], dtype=np.float32)
 
         homography_camproj, _ = cv2.findHomography(all_camproj_cam_points, all_camproj_proj_points)
@@ -86,8 +98,9 @@ def try_generate_homographies(all_camproj_cam_points, all_camproj_proj_points, a
     
 def detect_markers(undistorted):
     gray = cv2.cvtColor(undistorted, cv2.COLOR_BGR2GRAY)
-    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8,8))
-    gray = clahe.apply(gray)
+    #clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8,8))
+    #gray = clahe.apply(gray)
+    gray = cv2.GaussianBlur(gray, (5,5), 0)
     corners, ids, rejected = detector.detectMarkers(gray)
 
     if ids is not None:
@@ -186,7 +199,7 @@ parameters.adaptiveThreshWinSizeMax = 35
 parameters.adaptiveThreshWinSizeStep = 4
 parameters.adaptiveThreshConstant = 5
 parameters.cornerRefinementMethod = cv2.aruco.CORNER_REFINE_SUBPIX
-parameters.minMarkerPerimeterRate = 0.01  # default ~0.03
+parameters.minMarkerPerimeterRate = 0.005  # default ~0.03
 detector = aruco.ArucoDetector(dictionary, parameters)
 
 do_calibration = True
