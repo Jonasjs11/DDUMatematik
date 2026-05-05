@@ -1,39 +1,6 @@
 import cv2
 import numpy as np
 
-def find_sorrounding_contour_and_crop(frame, contours):
-    xs = []
-    ys = []
-
-    for c in contours:
-        x, y, w, h = cv2.boundingRect(c)
-        xs.append(x)
-        xs.append(x+w)
-        ys.append(y)
-        ys.append(y+h)
-        cv2.rectangle(frame, (x,y), (x+w,y+h), (255,0,0), 2)
-        #cv2.rectangle(thresh, (x,y), (x+w,y+h), (255,0,0), 2)
-
-    if contours:
-        x1 = min(xs)
-        x2 = max(xs)
-        y1 = min(ys)
-        y2 = max(ys)
-
-        pad = 20
-        x1 = max(x1 - pad, 0)
-        y1 = max(y1 - pad, 0)
-        x2 = min(x2 + pad, frame.shape[1])
-        y2 = min(y2 + pad, frame.shape[0])
-
-        cropped = frame[y1:y2, x1:x2]
-        cv2.rectangle(frame, (x1,y1), (x2,y2), (0,255,0), 2)
-        #cv2.rectangle(thresh, (x1,y1), (x2,y2), (0,255,0), 2)
-    else:
-        cropped = frame
-
-    return cropped
-
 def group_contours_to_boxes(contours, horizontal_thresh=40, vertical_thresh=80, pad=20):
     boxes = []
 
@@ -85,84 +52,6 @@ def group_contours_to_boxes(contours, horizontal_thresh=40, vertical_thresh=80, 
         ])
 
     return padded_boxes
-
-def boxes_to_contours(boxes):
-    contours = []
-
-    for x1, y1, x2, y2 in boxes:
-        contour = np.array([
-            [[x1, y1]],
-            [[x2, y1]],
-            [[x2, y2]],
-            [[x1, y2]]
-        ], dtype=np.int32)
-
-        contours.append(contour)
-
-    return contours
-
-def find_grouped_contours_and_crop(frame, contours, horizontal_thresh=40, vertical_thresh=80, pad=20):
-    boxes = []
-
-    # Get bounding boxes
-    for c in contours:
-        x, y, w, h = cv2.boundingRect(c)
-        boxes.append([x, y, x + w, y + h])
-
-    merged = True
-    while merged:
-        merged = False
-        new_boxes = []
-
-        while boxes:
-            box = boxes.pop(0)
-            x1, y1, x2, y2 = box
-
-            merged_box = box
-
-            i = 0
-            while i < len(boxes):
-                bx1, by1, bx2, by2 = boxes[i]
-
-                # compute gap between boxes
-                horizontal_gap = min(abs(bx1 - x2), abs(x1 - bx2))
-                vertical_gap = min(abs(by1 - y2), abs(y1 - by2))
-
-                # merge if close enough
-                dx, dy = rect_distance(merged_box, boxes[i])
-
-                if dx < horizontal_thresh and dy < vertical_thresh:
-                    merged_box = [
-                        min(x1, bx1),
-                        min(y1, by1),
-                        max(x2, bx2),
-                        max(y2, by2),
-                    ]
-
-                    boxes.pop(i)
-                    merged = True
-                    x1, y1, x2, y2 = merged_box
-                else:
-                    i += 1
-
-            new_boxes.append(merged_box)
-
-        boxes = new_boxes
-
-    crops = []
-
-    for (x1, y1, x2, y2) in boxes:
-        x1 = max(x1 - pad, 0)
-        y1 = max(y1 - pad, 0)
-        x2 = min(x2 + pad, frame.shape[1])
-        y2 = min(y2 + pad, frame.shape[0])
-
-        crop = frame[y1:y2, x1:x2]
-        crops.append(crop)
-
-        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-
-    return crops
 
 def filter_contours_by_size(contours, minimum_area=75, minimum_wh=5):
     filtered_contours = []
