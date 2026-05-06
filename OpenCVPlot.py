@@ -6,8 +6,8 @@ import math
 
 sample_points = 100
 
-plot_width, plot_height = 0.4, 0.4
-plot_origin_x, plot_origin_y = 0.5, 0.5
+plot_width, plot_height = 300, 300
+plot_origin_x, plot_origin_y = 500, 500
 
 plot_x_range_min, plot_x_range_max = -10, 10
 plot_y_range_min, plot_y_range_max = -10, 10
@@ -29,17 +29,17 @@ x = sp.symbols('x')
 current_function = sp.lambdify(x, parse_latex(r"x", backend="lark"), "numpy")
 last_accepted_input = r"f(x)=x"
 
-corner_1_x, corner_1_y, corner_2_x, corner_2_y = 0, 0, 0, 0
+corner_t_x, corner_t_y, corner_b_x, corner_b_y = 0, 0, 0, 0
 
 
 
 def setup_plot(_corner_1_x, _corner_1_y, _corner_2_x, _corner_2_y, LaTeX):
-    global plot_width, plot_height, plot_origin_x, plot_origin_y, corner_1_x, corner_1_y, corner_2_x, corner_2_y, initial_animation_t, initial_animation_done, last_accepted_input
+    global plot_width, plot_height, plot_origin_x, plot_origin_y, corner_t_x, corner_t_y, corner_b_x, corner_b_y, initial_animation_t, initial_animation_done, last_accepted_input
 
-    corner_1_x = _corner_1_x
-    corner_1_y = _corner_1_y
-    corner_2_x = _corner_2_x
-    corner_2_y = _corner_2_y
+    corner_t_x = _corner_1_x
+    corner_t_y = _corner_1_y
+    corner_b_x = _corner_2_x
+    corner_b_y = _corner_2_y
 
     #plot_width = np.abs(corner_2_x - corner_1_x)
     #plot_height = np.abs(corner_2_y - corner_1_y)
@@ -93,75 +93,34 @@ def set_function(LaTeX):
         print("Error with input: " + str(LaTeX) + " And error: " + str(e))
 
 
-def top_corner_moved_do_pan(corner_new_x, corner_new_y):
-    global plot_width, plot_height, plot_x_range_min, plot_x_range_max, plot_y_range_min, plot_y_range_max, corner_2_x, corner_2_y
-    range_x_per_width = (plot_x_range_max - plot_x_range_min) / plot_width
-    range_y_per_height = (plot_y_range_max - plot_y_range_min) / plot_height
-
-    corner_1_x = corner_new_x
-    corner_1_y = corner_new_y
-
-    plot_width = np.abs(corner_2_x - corner_1_x)
-    plot_height = np.abs(corner_2_y - corner_1_y)
-
-    plot_x_range_min = range_x_per_width * plot_width
-    plot_y_range_min = range_y_per_height * plot_height
-
-def bottom_corner_moved_do_pan(corner_new_x, corner_new_y):
-    global plot_width, plot_height, plot_x_range_min, plot_x_range_max, plot_y_range_min, plot_y_range_max, corner_2_x, corner_2_y
-    range_x_per_width = (plot_x_range_max - plot_x_range_min) / plot_width
-    range_y_per_height = (plot_y_range_max - plot_y_range_min) / plot_height
-
-    corner_2_x = corner_new_x
-    corner_2_y = corner_new_y
-
-    plot_width = np.abs(corner_2_x - corner_1_x)
-    plot_height = np.abs(corner_2_y - corner_1_y)
-
-    plot_x_range_max = range_x_per_width * plot_width
-    plot_y_range_max = range_y_per_height * plot_height
-
 def top_corner_moved_do_recenter(corner_new_x, corner_new_y):
-    global plot_origin_x, plot_origin_y, corner_1_x, corner_1_y, plot_width, plot_height
+    global plot_origin_x, plot_origin_y, corner_t_x, corner_t_y, plot_width, plot_height
 
-    corner_1_x = corner_new_x
-    corner_1_y = corner_new_y
+    corner_t_x = corner_new_x
+    corner_t_y = corner_new_y
 
-    plot_width = corner_2_x - corner_1_x
-    plot_height = corner_1_y - corner_2_y # Top marker has highest y
+    plot_width = corner_b_x - corner_t_x
+    plot_height = corner_b_y - corner_t_y # Bottom marker has highest y
 
-    plot_origin_x = corner_1_x + plot_width/2
-    plot_origin_y = corner_2_y + plot_height/2
+    plot_origin_x = corner_t_x + plot_width/2
+    plot_origin_y = corner_t_y + plot_height/2
 
-    #print(str(corner_1_x) + " " + str(corner_1_y) + " " + str(corner_2_x) + " " + str(corner_2_y))
+    #print("pos: " + str(corner_t_x) + " " + str(corner_t_y) + " " + str(corner_b_x) + " " + str(corner_b_y))
+    #print("wh: " + str(plot_width) + " " + str(plot_height))
 
 
 def bottom_corner_moved_do_recenter(corner_new_x, corner_new_y):
-    global plot_origin_x, plot_origin_y, corner_2_x, corner_2_y, plot_width, plot_height
+    global plot_origin_x, plot_origin_y, corner_b_x, corner_b_y, plot_width, plot_height
     
-    corner_2_x = corner_new_x
-    corner_2_y = corner_new_y
+    corner_b_x = corner_new_x
+    corner_b_y = corner_new_y
 
-    plot_width = corner_2_x - corner_1_x
-    plot_height = corner_1_y - corner_2_y # Top marker has highest y
+    plot_width = corner_b_x - corner_t_x
+    plot_height = corner_b_y - corner_t_y # Bottom marker has highest y
 
-    plot_origin_x = corner_1_x + plot_width/2
-    plot_origin_y = corner_2_y + plot_height/2
+    plot_origin_x = corner_t_x + plot_width/2
+    plot_origin_y = corner_t_y + plot_height/2
 
-    
-
-def pan_x_axis(amount):
-    global plot_x_range_min, plot_x_range_max, x_values, newPointsY
-    plot_x_range_min += amount
-    plot_x_range_max += amount
-
-    x_values = np.linspace(plot_x_range_min, plot_x_range_max, sample_points)
-    y_values = current_function(x_values)
-
-def pan_y_axis(amount):
-    global plot_y_min, plot_y_max
-    plot_x_range_min += amount
-    plot_x_range_max += amount
 
 def w2p(point, H): # WHITEBOARD TO PROJECTOR
     # Convert point to correct shape for cv2
@@ -184,9 +143,7 @@ def normalize_point(point):
     y_range = plot_y_range_max - plot_y_range_min
 
     nx = plot_origin_x + (x / x_range) * plot_width
-    ny = plot_origin_y + (y / y_range) * plot_height
-
-    ny = 1.0 - ny  # flip for screen space
+    ny = plot_origin_y - (y / y_range) * plot_height
 
     return (nx, ny)
 
@@ -213,6 +170,33 @@ def draw_ticks(image, H, tick_spacing=1, tick_size=0.02):
 
         y += tick_spacing
 
+def draw_grid(image, H, color, line_spacing=1):
+    x = math.ceil(plot_x_range_min)
+    while x <= plot_x_range_max:
+        p1 = normalize_point((x, plot_y_range_min))
+        p2 = normalize_point((x, plot_y_range_max))
+
+        if p1 and p2:
+            cv2.line(image, w2p(p1, H), w2p(p2, H), color, 1, cv2.LINE_AA)
+
+        x += line_spacing
+
+    y = math.ceil(plot_y_range_min)
+    while y <= plot_y_range_max:
+        p1 = normalize_point((plot_x_range_min, y))
+        p2 = normalize_point((plot_x_range_max, y))
+
+        if p1 and p2:
+            cv2.line(image, w2p(p1, H), w2p(p2, H), color, 1, cv2.LINE_AA)
+
+        y += line_spacing
+
+def draw_func_name(image, H, color):
+    box, _ = cv2.getTextSize(last_accepted_input, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
+    print(box)
+    textUpperLeft = normalize_point((plot_x_range_max, y_values[len(y_values)-1]))
+    cv2.putText(image, last_accepted_input, w2p(textUpperLeft, H), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
+
 def draw_plot(image, H, dt):
     global initial_animation_done, initial_animation_t, change_animation_done, change_animation_t, y_values
     # Draw Axis
@@ -224,6 +208,7 @@ def draw_plot(image, H, dt):
     cv2.line(image, w2p(axis_v_bottom, H), w2p(axis_v_top, H), (255, 255, 255), 1, cv2.LINE_AA)
 
     draw_ticks(image, H, tick_spacing=1, tick_size=0.2)
+    draw_grid(image, H, (100, 100, 100), line_spacing=1)
 
     points_to_draw = []
 
@@ -259,4 +244,6 @@ def draw_plot(image, H, dt):
     if len(points_to_draw) > 1:
         points = np.array(points_to_draw, dtype=np.int32)
         points = [points]
-        cv2.polylines(image, points, False, (0, 0, 255), 1, cv2.LINE_AA)
+        func_color = (0, 0, 255)
+        cv2.polylines(image, points, False, func_color, 1, cv2.LINE_AA)
+        draw_func_name(image, H, func_color)
