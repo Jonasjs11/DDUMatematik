@@ -156,6 +156,9 @@ def draw_ticks(image, H, tick_spacing=1, tick_size=0.02):
 
         if p1 and p2:
             cv2.line(image, w2p(p1, H), w2p(p2, H), (255, 255, 255), 1, cv2.LINE_AA)
+            text = str(x)
+            text_point = normalize_point((x, -10*tick_size))
+            cv2.putText(image, text, w2p(text_point, H), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
 
         x += tick_spacing
 
@@ -167,6 +170,9 @@ def draw_ticks(image, H, tick_spacing=1, tick_size=0.02):
 
         if p1 and p2:
             cv2.line(image, w2p(p1, H), w2p(p2, H), (255, 255, 255), 1, cv2.LINE_AA)
+            text = str(y)
+            text_point = normalize_point((10*tick_size, y))
+            cv2.putText(image, text, w2p(text_point, H), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
 
         y += tick_spacing
 
@@ -192,10 +198,8 @@ def draw_grid(image, H, color, line_spacing=1):
         y += line_spacing
 
 def draw_func_name(image, H, color):
-    box, _ = cv2.getTextSize(last_accepted_input, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
-    print(box)
-    textUpperLeft = normalize_point((plot_x_range_max, y_values[len(y_values)-1]))
-    cv2.putText(image, last_accepted_input, w2p(textUpperLeft, H), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
+    upperLeft = normalize_point((plot_x_range_max+1, 0))
+    cv2.putText(image, last_accepted_input, w2p(upperLeft, H), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
 
 def draw_plot(image, H, dt):
     global initial_animation_done, initial_animation_t, change_animation_done, change_animation_t, y_values
@@ -207,8 +211,8 @@ def draw_plot(image, H, dt):
     cv2.line(image, w2p(axis_h_left, H), w2p(axis_h_right, H), (255, 255, 255), 1, cv2.LINE_AA)
     cv2.line(image, w2p(axis_v_bottom, H), w2p(axis_v_top, H), (255, 255, 255), 1, cv2.LINE_AA)
 
-    draw_ticks(image, H, tick_spacing=1, tick_size=0.2)
     draw_grid(image, H, (100, 100, 100), line_spacing=1)
+    draw_ticks(image, H, tick_spacing=1, tick_size=0.2)
 
     points_to_draw = []
 
@@ -244,6 +248,6 @@ def draw_plot(image, H, dt):
     if len(points_to_draw) > 1:
         points = np.array(points_to_draw, dtype=np.int32)
         points = [points]
-        func_color = (0, 0, 255)
+        func_color = (255, 255, 255)
         cv2.polylines(image, points, False, func_color, 1, cv2.LINE_AA)
         draw_func_name(image, H, func_color)

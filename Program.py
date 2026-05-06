@@ -18,6 +18,7 @@ cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG")) # Tving den til at
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 4096) # Horizontal resolution. Relevante muligheder er 1920 eller 4096
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 2160) # Vertikal resolution. Relevante muligheder er 1080 eller 2160
 cap.set(cv2.CAP_PROP_FPS, 5) # Max framerate
+cap.set(cv2.CAP_PROP_BUFFERSIZE, 1) # Den gemmer kun på det nyeste billede
 
 # Load kamera-barrel-distortion-kalibrations-filer
 fs = cv2.FileStorage("calibration.yaml", cv2.FILE_STORAGE_READ)
@@ -35,7 +36,7 @@ drawing_plot = False
 
 def setup_windows():
     cv2.namedWindow('Projector', cv2.WINDOW_NORMAL)
-    cv2.moveWindow('Projector', 2700, 0)
+    cv2.moveWindow('Projector', 2500, 0)
     cv2.resizeWindow('Projector', 1920, 1080)
 
     cv2.namedWindow('Camera', cv2.WINDOW_NORMAL)

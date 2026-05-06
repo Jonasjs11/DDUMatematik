@@ -142,7 +142,7 @@ def detect_markers(undistorted):
 
 screen_w = 1920
 screen_h = 1080
-marker_spacing_x = 500
+marker_spacing_x = 750
 marker_spacing_y = 400
 marker_offset_x = 0
 marker_offset_y = 50
