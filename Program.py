@@ -13,13 +13,13 @@ import OpenCVPlot
 
 
 # Start kamera
-cap = cv2.VideoCapture("/dev/video0", cv2.CAP_V4L2) # cv2.VideoCapture(0)
-cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
-cap.set(cv2.CAP_PROP_FRAME_WIDTH, 4096)#1920 eller 4096
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 2160)#1080 eller 2160
-cap.set(cv2.CAP_PROP_FPS, 5)
+cap = cv2.VideoCapture("/dev/video0", cv2.CAP_V4L2) # Adressen/identifikationnen af kameraet. Alternativ er cv2.VideoCapture(0)
+cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG")) # Tving den til at bruge MJPG som virker bedst
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 4096) # Horizontal resolution. Relevante muligheder er 1920 eller 4096
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 2160) # Vertikal resolution. Relevante muligheder er 1080 eller 2160
+cap.set(cv2.CAP_PROP_FPS, 5) # Max framerate
 
-# Load kamera filer
+# Load kamera-barrel-distortion-kalibrations-filer
 fs = cv2.FileStorage("calibration.yaml", cv2.FILE_STORAGE_READ)
 cameraMatrix = fs.getNode("cameraMatrix").mat()
 dist = fs.getNode("distCoeffs").mat()
@@ -43,19 +43,14 @@ if __name__ == "__main__":
         if key == 27:  # ESC
             break
 
-
-
-        ret, frame = cap.read()
-        if not ret:
+        ret, frame = cap.read() # Forsøg at læse billede fra kamera
+        if not ret: # Hvis der ikke kunne læses et billede, prøv igen i ny iteration
             continue
 
-        undistorted = cv2.undistort(frame, cameraMatrix, dist)
-
+        undistorted = cv2.undistort(frame, cameraMatrix, dist) # Fjern barrel distortion
         cv2.imshow("Camera", undistorted)
 
-
-
-        if StartCalib.do_calibration:
+        if StartCalib.do_calibration: # Homografierne skal findes
             projector_image = StartCalib.generate_projector_screen().copy()
 
             cv2.imshow("Projector", projector_image)
@@ -67,7 +62,7 @@ if __name__ == "__main__":
             if success:
                 StartCalib.do_calibration = False
                 projector_image = np.zeros((StartCalib.screen_h, StartCalib.screen_w), dtype=np.uint8)
-        if(StartCalib.do_calibration == False and run_main_program == False):
+        if(StartCalib.do_calibration == False and run_main_program == False):# Vis test grid på tavlen
             StartCalib.debug_board_grid(homography_camproj, homography_camboard, projector_image, np.clip(calibration_succes_grid_animation_t, 0, 1))
             cv2.imshow("Projector", projector_image)
 
@@ -75,41 +70,38 @@ if __name__ == "__main__":
 
             if(calibration_succes_grid_animation_t >= 1.5):
                 run_main_program = True
-        if(run_main_program):
-            projector_image = np.zeros((StartCalib.screen_h, StartCalib.screen_w, 3), dtype=np.uint8) # 3 is 3 color channel
+        if run_main_program:
+            projector_image = np.zeros((StartCalib.screen_h, StartCalib.screen_w, 3), dtype=np.uint8) # Reset med projektor-billedet til sort, hvor 3 er for 3 color channels
             if drawing_plot == False:
                 cv2.imshow("Projector", projector_image)
             drawing_plot = False
 
+            # Nu skal whiteboardet klippes ud af kamera billedet
             height = StartCalib.measured_whiteboard_width # Swapped for some weird reason
             width = StartCalib.measured_whiteboard_height # Swapped for some weird reason
             warped = cv2.warpPerspective(frame, homography_camsnippet, (width, height))
             warped_rotated = cv2.rotate(warped, cv2.ROTATE_90_COUNTERCLOCKWISE)
 
-            #Swap back
+            # Swap back
             temp_height = height
             height = width
             width = temp_height
 
+            # Nu skal alt det der er på tavlen findes, først laver vi et "binært" threshold billede, som viser hvad der er tavle, og hvad der ikke er. Derefter skal øerne identificeres og grupperes.
             gray = cv2.cvtColor(warped_rotated, cv2.COLOR_BGR2GRAY)
             clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8,8))
             gray = clahe.apply(gray)
             gray = cv2.GaussianBlur(src=gray, ksize=(3,3), sigmaX=0, sigmaY=0)
             thresh = cv2.adaptiveThreshold(src=gray, maxValue=255, adaptiveMethod=cv2.ADAPTIVE_THRESH_GAUSSIAN_C, thresholdType=cv2.THRESH_BINARY_INV, blockSize=41, C=5) # Blocksize er område for threshold (kun ulige tal), C er en konstant som trækkes fra gennemsnittet
+            thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel=np.ones((2,2), np.uint8), iterations=1) # remove tiny noise but keep strokes
+            thresh = cv2.dilate(thresh, kernel=np.ones((3,3), np.uint8), iterations=1) # connect text lightly
 
-            # remove tiny noise but keep strokes
-            kernel = np.ones((2,2), np.uint8)
-            thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel, iterations=1)
+            contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE) # Start med at finde alle øer i thresholden
+            filtered_contours = HelperFunc.filter_contours_by_size(contours, minimum_area=75, minimum_wh=5) # Filtrer alle fra, der er for lille, og bare er noise/støj
+            grouped_boxes = HelperFunc.group_contours_to_boxes(filtered_contours, horizontal_thresh=100, vertical_thresh=20, pad=10) # Grupper contours hvis de er inden for thresholdværdierne til boxes
+            HelperFunc.draw_boxes(warped_rotated, grouped_boxes, color=(255, 255, 0), thickness=1, show_index=True) # Debug, tegn de fundne kasser
 
-            # connect text lightly
-            kernel = np.ones((3,3), np.uint8)
-            thresh = cv2.dilate(thresh, kernel, iterations=1)
-
-            contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            filtered_contours = HelperFunc.filter_contours_by_size(contours, minimum_area=75, minimum_wh=5)
-            grouped_boxes = HelperFunc.group_contours_to_boxes(filtered_contours, horizontal_thresh=100, vertical_thresh=20, pad=10)
-            HelperFunc.draw_boxes(warped_rotated, grouped_boxes, color=(255, 255, 0), thickness=1, show_index=True)
-
+            # Nu skal de markørerne til brugerinteraktion findes
             gray = cv2.cvtColor(warped_rotated, cv2.COLOR_BGR2GRAY)
             clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8,8))
             gray = clahe.apply(gray)
@@ -117,18 +109,6 @@ if __name__ == "__main__":
 
             if ids is not None:
                 cv2.aruco.drawDetectedMarkers(warped_rotated, corners, ids)
-
-                if 6 in ids.flatten(): # flatten() laver en liste med elementer, i stedet for et array med lister med størrelser 1
-                    marker_box = HelperFunc.get_marker_box(corners, ids, 6)
-                    HelperFunc.draw_boxes(warped_rotated, [marker_box], color=(255, 255, 255), thickness=1, show_index=True)
-                    for box in grouped_boxes:
-                       if HelperFunc.box_contains_marker(box, marker_box):
-                            x1, y1, x2, y2 = box
-                            mx1, my1, mx2, my2 = marker_box
-                            marker_extra_padding = 15
-                            crop = warped_rotated[y1:y2, mx2+marker_extra_padding:x2]
-                            cv2.imshow("matched_contour 6", crop)
-                            #print(HMER.doHMER(crop))
 
                 if 7 in ids.flatten(): # flatten() laver en liste med elementer, i stedet for et array med lister med størrelser 1
                     marker_box = HelperFunc.get_marker_box(corners, ids, 7)
@@ -197,7 +177,7 @@ if __name__ == "__main__":
             #cv2.imshow("threshold", thresh)
             cv2.imshow("warped", warped_rotated)
 
-            if key == ord('d'):
+            if key == ord('d'): # Hvis der trykkes "d" skal homografierne findes igen, hvor alt først skal resettes
                 calibration_succes_grid_animation_t = 0
                 StartCalib.do_calibration = True
                 run_main_program = False
