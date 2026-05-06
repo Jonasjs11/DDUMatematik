@@ -67,7 +67,7 @@ if __name__ == "__main__":
             if success:
                 StartCalib.do_calibration = False
                 projector_image = np.zeros((StartCalib.screen_h, StartCalib.screen_w), dtype=np.uint8)
-        if(StartCalib.do_calibration == False):
+        if(StartCalib.do_calibration == False and run_main_program == False):
             StartCalib.debug_board_grid(homography_camproj, homography_camboard, projector_image, np.clip(calibration_succes_grid_animation_t, 0, 1))
             cv2.imshow("Projector", projector_image)
 
