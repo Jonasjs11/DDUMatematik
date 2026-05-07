@@ -8,4 +8,4 @@ pip install -U "unimernet[full]"
 pip install pygame
 pip install lark
 ```
-5. Kør demo.py
+5. Kør Program.py
