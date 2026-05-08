@@ -5,7 +5,7 @@ import numpy as np
 def nothing(x):
     pass
 
-def board2proj(camproj_H, camboard_H, point): # https://chatgpt.com/share/69f6075f-8a4c-83eb-8ab9-b34097ed70ac
+def board2proj(camproj_H, camboard_H, point):
     H = get_board2proj_H(camproj_H, camboard_H)
 
     # Convert point to correct shape for cv2
@@ -98,13 +98,13 @@ def detect_markers(undistorted):
     gray = cv2.GaussianBlur(gray, (5,5), 0)
     corners, ids, rejected = detector.detectMarkers(gray)
 
+    all_camproj_cam_points = []
+    all_camproj_proj_points = []
+
+    all_camboard_cam_points = []
+
     if ids is not None:
         cv2.aruco.drawDetectedMarkers(undistorted, corners, ids)
-
-        all_camproj_cam_points = []
-        all_camproj_proj_points = []
-
-        all_camboard_cam_points = []
 
         # Pair ids with corners and sort by id
         markers = sorted(
