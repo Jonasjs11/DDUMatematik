@@ -114,8 +114,8 @@ def box_contains_marker(box, marker_box):
     x1, y1, x2, y2 = box
     mx1, my1, mx2, my2 = marker_box
 
-    return (mx1 >= x1    and my1 >= y1 and
-            mx2 <= x2    and my2 <= y2)
+    return (mx1 >= x1 and my1 >= y1 and
+            mx2 <= x2 and my2 <= y2)
 
 def draw_boxes(image, boxes, color=(0, 255, 0), thickness=2, show_index=False):
     for i, (x1, y1, x2, y2) in enumerate(boxes):
@@ -124,83 +124,4 @@ def draw_boxes(image, boxes, color=(0, 255, 0), thickness=2, show_index=False):
 
         # Optional index label
         if show_index:
-            cv2.putText(
-                image,
-                str(i),
-                (x1, max(y1 - 5, 0)),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.5,
-                color,
-                1,
-                cv2.LINE_AA
-            )
-
-import cv2
-import numpy as np
-
-def get_dominant_non_white_color(
-    crop,
-    k=3,
-    sat_thresh=50,
-    val_thresh=245,
-    sat_boost=255.0,   # <-- key parameter
-    debug=False
-):
-    if crop is None or crop.size == 0:
-        return None
-
-    # --- Step 1: Convert to HSV ---
-    hsv = cv2.cvtColor(crop, cv2.COLOR_BGR2HSV).astype(np.float32)
-
-    # --- Step 2: Boost saturation ---
-    hsv[:, :, 1] *= sat_boost
-    hsv[:, :, 1] = np.clip(hsv[:, :, 1], 0, 255)
-
-    hsv = hsv.astype(np.uint8)
-
-    # --- Step 3: Mask non-white pixels ---
-    mask = (hsv[:, :, 1] > sat_thresh) & (hsv[:, :, 2] < val_thresh)
-
-    pixels = crop[mask]
-
-    if len(pixels) == 0:
-        return None
-
-    # --- Step 4: K-means clustering ---
-    pixels = pixels.reshape(-1, 3).astype(np.float32)
-
-    criteria = (
-        cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER,
-        10,
-        1.0
-    )
-
-    _, labels, centers = cv2.kmeans(
-        pixels,
-        k,
-        None,
-        criteria,
-        10,
-        cv2.KMEANS_RANDOM_CENTERS
-    )
-
-    counts = np.bincount(labels.flatten())
-    dominant = centers[np.argmax(counts)]
-
-    dominant_color = tuple(int(c) for c in dominant)
-
-    # --- Debug ---
-    if debug:
-        cv2.imshow("crop", crop)
-
-        sat_vis = hsv[:, :, 1]
-        cv2.imshow("boosted_saturation", sat_vis)
-
-        mask_vis = (mask.astype(np.uint8) * 255)
-        cv2.imshow("mask", mask_vis)
-
-        filtered_vis = np.zeros_like(crop)
-        filtered_vis[mask] = crop[mask]
-        cv2.imshow("filtered_pixels", filtered_vis)
-
-    return dominant_color
+            cv2.putText(image, str(i), (x1, max(y1 - 5, 0)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
